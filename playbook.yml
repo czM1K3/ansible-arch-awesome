@@ -1,0 +1,147 @@
+---
+- hosts: all
+  vars:
+    current_user: michal
+  tasks:
+    - name: Update system
+      become: true
+      pacman:
+        update_cache: yes
+        upgrade: yes
+    - name: Install and xorg
+      become: true
+      pacman:
+        name: 
+          - xorg-server
+          - arandr
+        state: present
+    - name: Install yay
+      block:
+        - name: Install build dependencies
+          become: true
+          pacman:
+            name:
+              - base-devel
+              - git
+        - name: Create yay-bin folder in user home
+          file:
+            path: '/home/{{ current_user }}/aur/yay-bin'
+            owner: '{{ current_user }}'
+            recurse: yes
+            state: directory
+        - name: Git checkout yay-bin from AUR
+          become: true
+          become_user: '{{ current_user }}'
+          git:
+            repo: 'https://aur.archlinux.org/yay-bin'
+            dest: '/home/{{ current_user }}/aur/yay-bin'
+          register: cloned
+        - name: Make yay-bin package and install it
+          become: true
+          become_user: '{{ current_user }}'
+          command: makepkg -si --noconfirm
+          args:
+            chdir: '/home/{{ current_user }}/aur/yay-bin'
+          when: cloned.changed
+
+    - name: Install ly from AUR
+      kewlfft.aur.aur:
+        name: ly
+        state: present
+        use: yay
+
+    - name: Enable ly service
+      become: true
+      service:
+        name: ly
+        enabled: yes
+    
+    - name: Install awesome
+      become: true
+      pacman:
+        name:
+          - awesome
+          - rofi
+          - picom
+          - xclip
+          - ttf-roboto
+          - polkit-gnome
+          - lxappearance
+          - flameshot
+          - network-manager-applet
+          - xfce4-power-manager
+          - papirus-icon-theme
+
+    - name: Install AUR packages
+      kewlfft.aur.aur:
+        name: 
+          - pnmixer
+          - i3lock-fancy-git
+          - plata-theme-bin
+          - breeze-default-cursor-theme
+          # - qt5-style-plugins
+        state: present
+        use: yay
+    
+    - name: Create awesome config directory
+      file:
+        path: '/home/{{ current_user }}/.config/awesome'
+        owner: '{{ current_user }}'
+        recurse: yes
+        state: directory
+    - name: Clone repository
+      git:
+        repo: https://github.com/czM1K3/material-awesome
+        dest: '/home/{{ current_user }}/.config/awesome'
+
+    - name: Install other apps
+      become: true
+      pacman:
+        name:
+          - nautilus
+          - alacritty
+          - unzip
+          - ansible
+          - fish
+          - starship
+
+    - name: Set fish as default shell
+      become: yes
+      user:
+        name: '{{ current_user }}'
+        shell: /usr/bin/fish
+    
+    - name: Create fonts folder
+      file:
+        path: '/home/{{ current_user }}/.local/share/fonts'
+        owner: '{{ current_user }}'
+        recurse: yes
+        state: directory
+
+    - name: Copy fonts
+      copy:
+        src: '{{ playbook_dir }}/fonts'
+        dest: '/home/{{ current_user }}/.local/share'
+
+    - name: Create git folder
+      file:
+        path: '/home/{{ current_user }}/Documents/Programming/Git/dotfiles'
+        owner: '{{ current_user }}'
+        recurse: yes
+        state: directory
+
+    - name: Git checkout dotfiles
+      git:
+        repo: 'https://github.com/czM1K3/dotfiles'
+        dest: '/home/{{ current_user }}/Documents/Programming/Git/dotfiles'
+    
+    - name: Apply dotfiles
+      command: ansible-playbook playbook.yml
+      args:
+        chdir: '/home/{{ current_user }}/Documents/Programming/Git/dotfiles'
+    
+    - name: Install brave from AUR
+      kewlfft.aur.aur:
+        name: brave-bin
+        state: present
+        use: yay

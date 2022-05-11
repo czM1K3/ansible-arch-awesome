@@ -1,0 +1,2 @@
+[arch]
+192.168.122.162 ansible_user=michal ansible_ssh_pass=toor ansible_ssh_common_args='-o "StrictHostKeyChecking no" -o "UserKnownHostsFile /dev/null"'
